@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Заявка</title>
+  <style>
+    .hidden{display:none}
+    .modal{position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center}
+    .modal-box{background:#fff;padding:20px;border-radius:6px;max-width:90%;width:420px}
+    .error{color:#b00}
+  </style>
+</head>
+<body>
+  <div id="form-errors" style="display:none; border:1px solid #f5c0c0; background:#ffe8e8; padding:16px; margin-bottom:16px; border-radius:12px; color:#b00020;"></div>
+  <form id="requestForm" novalidate>
+    <label>Име:<br><input name="name" id="name" required></label><br><br>
+    <label>Телефон:<br><input name="phone" id="phone" required placeholder="+359..." ></label><br><br>
+    <label>Адрес:<br><input name="address" id="address" required></label><br><br>
+    <label>Имейл за контакт (ваш):<br><input name="senderEmail" id="senderEmail" required placeholder="you@example.com"></label><br><br>
+    <label>Услуга:<br>
+      <select id="service" required>
+        <option value="">-- изберете услуга --</option>
+        <option>Почистване диван</option>
+        <option>Почистване матрак</option>
+      </select>
+    </label><br><br>
+    <button type="submit" id="sendBtn">Изпрати заявка</button>
+  </form>
+
+  <script src="script.js"></script>
+</body>
+</html>
