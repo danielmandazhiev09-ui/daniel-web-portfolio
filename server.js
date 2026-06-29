@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const nodemailer = require('nodemailer');
 const bodyParser = require('body-parser');
@@ -104,7 +105,7 @@ async function verifyAddress(address){
 
 app.post('/submit', async (req, res) => {
   try{
-    const {name, phone, address, service, senderEmail} = req.body || {};
+    const {name, phone, address, service, senderEmail, message} = req.body || {};
 
     // basic server-side validation (same rules as client)
     if(!name || name.trim().length<2) return res.json({success:false, error:'Невалидно име'});
@@ -121,8 +122,8 @@ app.post('/submit', async (req, res) => {
       from: `"Заявки" <${SMTP_USER || 'no-reply@example.com'}>`,
       to: EMAIL_TO,
       subject: `Нова заявка: ${service} — ${name}`,
-      text: `Име: ${name}\nТелефон: ${phone}\nАдрес: ${address}\nУслуга: ${service}\nИмейл на подателя: ${senderEmail || '—'}\n`,
-      html: `<p><strong>Име:</strong> ${name}</p><p><strong>Телефон:</strong> ${phone}</p><p><strong>Адрес:</strong> ${address}</p><p><strong>Услуга:</strong> ${service}</p><p><strong>Имейл на подателя:</strong> ${senderEmail || '—'}</p>`
+      text: `Име: ${name}\nТелефон: ${phone}\nАдрес: ${address}\nУслуга: ${service}\nИмейл на подателя: ${senderEmail || '—'}\nСъобщение: ${message || '—'}\n`,
+      html: `<p><strong>Име:</strong> ${name}</p><p><strong>Телефон:</strong> ${phone}</p><p><strong>Адрес:</strong> ${address}</p><p><strong>Услуга:</strong> ${service}</p><p><strong>Имейл на подателя:</strong> ${senderEmail || '—'}</p><p><strong>Съобщение:</strong> ${message || '—'}</p>`
     };
 
     if(senderEmail && senderEmail.trim()){
@@ -135,6 +136,28 @@ app.post('/submit', async (req, res) => {
       const preview = nodemailer.getTestMessageUrl(info);
       console.log('Preview URL:', preview);
       result.previewUrl = preview;
+    }
+    // Send a confirmation email to the submitter (if provided)
+    try {
+      if (senderEmail && senderEmail.trim()) {
+        const confirmOptions = {
+          from: mailOptions.from,
+          to: senderEmail.trim(),
+          subject: `Потвърждение: получихме вашата заявка — ${service}`,
+          text: `Здравейте ${name},\n\nБлагодарим ви — получихме вашата заявка за услуга: ${service}.\nЩе се свържем с вас скоро на ${phone}.\n\nАко имате още информация, отговорете на този имейл.\n\nПоздрави,\nRainbow Clean`,
+          html: `<p>Здравейте ${name},</p><p>Благодарим ви — получихме вашата заявка за услуга: <strong>${service}</strong>.</p><p>Ще се свържем с вас скоро на <strong>${phone}</strong>.</p><p>Ако имате още информация, отговорете на този имейл.</p><p>Поздрави,<br/>Rainbow Clean</p>`
+        };
+        const confirmInfo = await transporter.sendMail(confirmOptions);
+        if(isTestAccount){
+          const preview2 = nodemailer.getTestMessageUrl(confirmInfo);
+          console.log('Confirmation preview URL:', preview2);
+          // include the preview URL in the result for local testing
+          result.confirmPreviewUrl = preview2;
+        }
+      }
+    } catch (confErr) {
+      console.error('Failed to send confirmation email to submitter:', confErr && confErr.message ? confErr.message : confErr);
+      // don't fail the whole request if confirmation fails
     }
     return res.json(result);
   }catch(err){

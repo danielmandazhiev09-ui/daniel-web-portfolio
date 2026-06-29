@@ -1,0 +1,7 @@
+[build]
+command = "echo 'Build complete'"
+functions = "netlify/functions"
+
+[functions]
+directory = "netlify/functions"
+node_bundler = "esbuild"

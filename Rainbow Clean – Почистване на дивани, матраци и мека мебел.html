@@ -1157,28 +1157,35 @@
       </div>
     </div>
 
-    <div class="contact-form fade-up">
+    <form id="requestForm" class="contact-form fade-up">
       <h3>🗓️ Изпратете заявка</h3>
+      <div id="form-errors" style="margin-bottom:16px; display:none; color:#B00020; background:#FFE8E8; border:1px solid #F5C0C0; border-radius:14px; padding:14px;"></div>
+      <div id="form-status" style="margin-bottom:16px; display:none; color:#1B4E1F; background:#E9F8EE; border:1px solid #B7E1C3; border-radius:14px; padding:14px;"></div>
 
       <div class="form-row">
         <div class="form-group">
-          <label>Вашето име</label>
-            <input type="text" placeholder="Име Фамилия">
+          <label for="name">Вашето име</label>
+          <input id="name" name="name" type="text" placeholder="Име Фамилия" required>
         </div>
         <div class="form-group">
-          <label>Телефон</label>
-          <input type="tel" placeholder="Телефонен номер">
+          <label for="phone">Телефон</label>
+          <input id="phone" name="phone" type="tel" placeholder="Телефонен номер" required>
         </div>
       </div>
 
       <div class="form-group">
-        <label>Местоположение</label>
-        <input type="text" placeholder="Вашето местоположение и адрес">
+        <label for="address">Адрес</label>
+        <input id="address" name="address" type="text" placeholder="Вашето местоположение и адрес" required>
       </div>
 
       <div class="form-group">
-        <label>Вид услуга</label>
-        <select>
+        <label for="senderEmail">Email за контакт</label>
+        <input id="senderEmail" name="senderEmail" type="email" placeholder="you@example.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="service">Вид услуга</label>
+        <select id="service" name="service" required>
           <option value="">— Изберете услуга —</option>
           <option>Почистване на диван</option>
           <option>Почистване на матрак</option>
@@ -1189,14 +1196,14 @@
       </div>
 
       <div class="form-group">
-        <label>Допълнително съобщение</label>
-        <textarea placeholder="Опишете какво имате нужда — брой предмети, специфично зацапване и т.н."></textarea>
+        <label for="message">Допълнително съобщение</label>
+        <textarea id="message" name="message" placeholder="Опишете какво имате нужда — брой предмети, специфично зацапване и т.н."></textarea>
       </div>
 
-      <button class="btn-submit" onclick="alert('Благодарим! Ще се свържем с вас скоро. 🙂')">
-        ✅ Прати заявка
+      <button type="submit" class="btn-submit">
+        ✅ Изпрати заявка
       </button>
-    </div>
+    </form>
   </div>
 </section>
 
@@ -1328,6 +1335,119 @@
     openPhoneBtn.addEventListener('click', (e) => {
       const phone = openPhoneBtn.dataset.phone || '';
       openPhoneModal(phone);
+    });
+  }
+
+  // Request form validation + submit
+  const requestForm = document.getElementById('requestForm');
+  const formErrors = document.getElementById('form-errors');
+
+  function showFormErrors(errors) {
+    if (!errors.length) {
+      formErrors.style.display = 'none';
+      formErrors.innerHTML = '';
+      return;
+    }
+    formErrors.style.display = 'block';
+    formErrors.innerHTML = '<ul style="margin:0; padding-left:18px;">' +
+      errors.map(err => `<li>${err}</li>`).join('') + '</ul>';
+  }
+
+  function validateRequest(values) {
+    const errors = [];
+    if (!values.name || values.name.trim().length < 2) {
+      errors.push('Въведете валидно име (минимум 2 букви).');
+    }
+    const phone = (values.phone || '').trim();
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 7 || digits.length > 15) {
+      errors.push('Телефонът трябва да съдържа между 7 и 15 цифри.');
+    }
+    if (!/^\+?[\d\s()\-]+$/.test(phone)) {
+      errors.push('Телефонът съдържа недопустими символи.');
+    }
+    if (!values.address || values.address.trim().length < 5) {
+      errors.push('Адресът е твърде кратък.');
+    }
+    if (!values.senderEmail || !values.senderEmail.trim()) {
+      errors.push('Email за контакт е задължителен.');
+    } else if (!/^\S+@\S+\.\S+$/.test(values.senderEmail.trim())) {
+      errors.push('Въведете валиден email адрес.');
+    }
+    if (!values.service || values.service === '') {
+      errors.push('Изберете услуга.');
+    }
+    return errors;
+  }
+
+  async function submitRequest(payload) {
+    const endpoint = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? '/submit'
+      : '/.netlify/functions/submit';
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (response.ok && result.success) {
+        return { success: true };
+      }
+
+      return { success: false, error: result.error || 'Възникна проблем при изпращане. Моля опитайте по-късно.' };
+    } catch (err) {
+      console.error('Error submitting request:', err);
+      return { success: false, error: 'Не успяхме да изпратим заявката. Моля опитайте отново по-късно.' };
+    }
+  }
+
+  function showFormStatus(message) {
+    const formStatus = document.getElementById('form-status');
+    if (!formStatus) return;
+    if (!message) {
+      formStatus.style.display = 'none';
+      formStatus.textContent = '';
+      return;
+    }
+    formStatus.style.display = 'block';
+    formStatus.textContent = message;
+  }
+
+  if (requestForm) {
+    requestForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const values = {
+        name: document.getElementById('name').value,
+        phone: document.getElementById('phone').value,
+        address: document.getElementById('address').value,
+        senderEmail: document.getElementById('senderEmail').value,
+        service: document.getElementById('service').value,
+      };
+
+      const errors = validateRequest(values);
+      if (errors.length) {
+        showFormErrors(errors);
+        return;
+      }
+
+      showFormErrors([]);
+      showFormStatus('');
+      const payload = {
+        ...values,
+        message: document.getElementById('message').value,
+      };
+
+      const result = await submitRequest(payload);
+      if (result.success) {
+        showFormStatus('Заявката е изпратена успешно. Ще се свържем с вас скоро.');
+        requestForm.reset();
+        showFormErrors([]);
+      } else {
+        showFormErrors([result.error || 'Възникна проблем при изпращане.']);
+      }
     });
   }
 
